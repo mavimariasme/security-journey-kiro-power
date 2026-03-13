@@ -8,14 +8,29 @@ author: "mariasme@amazon.com"
 
 # Security Journey Power
 
+## Safety Rules — Read-Only by Default
+
+**CRITICAL: This power operates in READ-ONLY mode by default. The agent MUST follow these rules at all times:**
+
+1. The agent MAY autonomously execute AWS CLI commands that only READ data (describe, list, get, lookup, generate-credential-report).
+2. The agent MUST NEVER autonomously execute any AWS CLI command that creates, modifies, deletes, enables, disables, attaches, detaches, revokes, or authorizes AWS resources or configurations.
+3. When a remediation step requires a write/modify/delete action, the agent MUST:
+   - Clearly present the exact command(s) to the user
+   - Explain what the command will do and what resources it will affect
+   - Explicitly ask the user for approval before executing
+   - Only execute the command after receiving explicit user confirmation
+4. This applies to ALL write operations including but not limited to: `create-*`, `delete-*`, `put-*`, `modify-*`, `update-*`, `enable-*`, `disable-*`, `attach-*`, `detach-*`, `revoke-*`, `authorize-*`, `start-logging`, `stop-logging`.
+5. The agent MUST NOT batch multiple write commands together. Each write action requires separate user approval.
+6. If the user asks the agent to "fix everything" or "remediate all", the agent MUST still present each write action individually for approval.
+
 ## Overview
 
 This power helps you systematically assess and improve your AWS security posture using the official AWS Security Maturity Model framework. It provides:
 
-- Automated Assessment: Uses AWS CLI and APIs to retrieve current security configurations
+- Automated Assessment: Uses AWS CLI and APIs to retrieve current security configurations (read-only, runs automatically)
 - Progress Tracking: Maintains a CSV file tracking your security maturity across all domains
 - Remediation Planning: Analyzes gaps and creates prioritized remediation plans
-- Implementation Guidance: Provides step-by-step AWS CLI commands and console instructions
+- Implementation Guidance: Provides step-by-step AWS CLI commands and console instructions (requires user approval before execution)
 - Continuous Improvement: Updates tracking as you implement remediations
 
 The AWS Security Maturity Model organizes security controls into 4 phases (Quick Wins, Foundational, Efficient, Optimized) across 10 security domains, helping you prioritize improvements based on ease of implementation and security impact.
@@ -239,9 +254,12 @@ For each phase:
 **Goal**: Implement a specific security control with guidance
 
 1. Ask the agent: "I want to implement GuardDuty. Guide me through it."
-2. Follow the step-by-step CLI commands or console instructions
-3. Ask the agent: "Verify that GuardDuty is properly configured"
-4. Ask the agent: "Update the CSV to mark GuardDuty as completed"
+2. The agent will present each AWS CLI command and ask for your approval before executing
+3. Follow the step-by-step guidance, approving each action
+4. Ask the agent: "Verify that GuardDuty is properly configured"
+5. Ask the agent: "Update the CSV to mark GuardDuty as completed"
+
+> Note: The agent will never execute write/modify/delete AWS commands without your explicit approval. Each action is presented individually for review.
 
 ### Workflow 4: Continuous Monitoring
 

@@ -1,5 +1,9 @@
 # AWS Security Maturity Model - Implementation Guide
 
+## ⚠️ User Approval Required
+
+This guide contains AWS CLI commands and procedures that modify your AWS environment. The agent MUST present each write/modify/delete command to the user and obtain explicit approval before execution. No AWS resource changes should be made automatically.
+
 ## Overview
 
 The AWS Security Maturity Model is a prescriptive framework that helps organizations prioritize security improvements based on ease of implementation, cost efficiency, and security impact. Unlike traditional maturity models, it focuses on practical, field-tested approaches to strengthen your AWS security posture.

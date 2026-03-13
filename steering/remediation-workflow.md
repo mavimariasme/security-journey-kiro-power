@@ -2,6 +2,18 @@
 
 This guide provides step-by-step instructions for implementing security controls identified in your assessment.
 
+## ⚠️ User Approval Required for All Actions
+
+**Every AWS CLI command in this guide that creates, modifies, or deletes resources requires explicit user approval before execution.** The agent MUST:
+
+1. Present the exact command to the user
+2. Explain what it will do and what resources it affects
+3. Ask: "Would you like me to execute this command?"
+4. Wait for explicit confirmation before proceeding
+5. Never batch multiple write commands — each requires separate approval
+
+This guide contains write commands (create, modify, delete, enable, attach, revoke, etc.) that change your AWS environment. None of these should be executed automatically.
+
 ## Overview
 
 The remediation workflow helps you:
