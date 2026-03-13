@@ -23,6 +23,17 @@ The remediation workflow helps you:
 4. Update tracking CSV
 5. Monitor for regressions
 
+## Well-Architected Security Tools for Remediation
+
+Before starting remediation, use the Well-Architected Security MCP server tools to get context:
+
+- **AnalyzeSecurityPosture** — Get a prioritized list of security improvements with recommendations aligned to the Well-Architected Framework
+- **GetSecurityFindings** — Review current findings by severity to validate which controls need attention
+- **GetResourceComplianceStatus** — Check which resources are non-compliant to scope remediation effort
+- **CheckSecurityServices** — Verify which security services are already enabled before attempting to enable them
+
+After implementing a remediation, use **CheckSecurityServices** and **GetSecurityFindings** to verify the fix took effect.
+
 ## Prioritization Framework
 
 **Priority Order:**

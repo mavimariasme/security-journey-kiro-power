@@ -10,11 +10,37 @@ The assessment workflow helps you:
 3. Identify gaps and prioritize remediations
 4. Track progress in the CSV file
 
+## Well-Architected Security MCP Server
+
+In addition to the manual CLI checks below, the power includes the Well-Architected Security MCP server which provides automated assessment tools:
+
+- **CheckSecurityServices** — Quickly check the operational status of GuardDuty, Security Hub, Inspector, and IAM Access Analyzer across regions. Use this as a fast first pass before running individual CLI checks.
+- **GetSecurityFindings** — Retrieve and filter security findings from Security Hub, GuardDuty, and Inspector by severity, resource type, or service. Replaces many of the manual `get-findings` CLI calls below.
+- **AnalyzeSecurityPosture** — Run a comprehensive security posture analysis against the Well-Architected Framework Security Pillar. Use this for an overall assessment summary.
+- **GetResourceComplianceStatus** — Check resource compliance against security standards. Useful for Phase 3 and Phase 4 controls.
+- **ExploreAwsResources** — Discover resources across AWS services and regions. Helpful for identifying resources that need security attention.
+- **GetStoredSecurityContext** — Retrieve historical security data for trend analysis and comparison with previous assessments.
+
+**Recommended approach:** Start each phase by running `CheckSecurityServices` and `AnalyzeSecurityPosture` to get a high-level view, then use the specific CLI checks below for detailed control-by-control assessment.
+
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
 - Read access to AWS services (SecurityAudit policy recommended)
 - CSV tracking file (will be created if doesn't exist)
+- For multi-account assessments, see `multi-account-assessment.md`
+
+## Before You Start
+
+**The agent MUST complete the `pre-assessment-checklist.md` before running any commands in this workflow.** This validates credentials, asks scoping questions, and initializes the findings file. Do not skip this step.
+
+## Findings Persistence
+
+**The agent MUST follow the `findings-persistence.md` protocol during all assessments.** Key points:
+- Create `assessment-findings-{ACCOUNT_ID}.md` at the start
+- Append findings after each control check (not at the end of a phase)
+- Write a phase summary after completing each phase
+- This prevents context overflow and preserves work if the conversation is interrupted
 
 ## Step-by-Step Assessment
 
