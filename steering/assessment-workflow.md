@@ -44,7 +44,7 @@ In addition to the manual CLI checks below, the power includes the Well-Architec
 
 ## Step-by-Step Assessment
 
-### Phase 1: Account Information
+### Phase 0: Account Information
 
 **Retrieve basic account information:**
 
@@ -64,7 +64,7 @@ aws iam list-account-aliases
 - You have access to expected regions
 - Account alias is set (best practice)
 
-### Phase 2: Quick Wins Assessment
+### Phase 1: Quick Wins Assessment
 
 #### 1. Multi-Factor Authentication (MFA)
 
@@ -392,7 +392,7 @@ aws securityhub get-findings --filters '{"SeverityLabel":[{"Value":"HIGH","Compa
 
 **Expected result:** Ideally there should be zero CRITICAL and zero HIGH severity active findings. Any CRITICAL findings represent immediate security risks that should be remediated urgently — these often include publicly exposed resources, missing encryption, or disabled security controls. HIGH findings should be triaged and addressed within a defined SLA. The counts by resource type help prioritize remediation efforts by identifying which resource categories have the most findings. See remediation-workflow.md for remediation steps.
 
-### Phase 3: Foundational Controls Assessment
+### Phase 2: Foundational Controls Assessment
 
 #### 1. Service Control Policies (SCPs)
 
@@ -866,7 +866,7 @@ aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[].{Group
 - Is there a clear escalation path for developers to raise security concerns during development?
 - Do security teams provide feedback on pull requests or design documents for security-sensitive features?
 
-### Phase 4: Efficient Controls Assessment
+### Phase 3: Efficient Controls Assessment
 
 #### 1. Design Your Secure Architecture
 
@@ -1481,7 +1481,7 @@ done || echo "No Route 53 failover records found"
 - Are DR roles and responsibilities clearly assigned?
 - Does the organization conduct regular DR drills to validate failover and failback procedures?
 
-### Phase 5: Optimized Controls Assessment
+### Phase 4: Optimized Controls Assessment
 
 #### 1. Sharing Security Work and Responsibility
 
@@ -1982,7 +1982,7 @@ aws fis list-experiments --query 'experiments[].{ExperimentId:id,TemplateId:expe
 
 **Expected result:** AWS Fault Injection Simulator should have experiment templates defined that test the resilience of critical workloads against common failure scenarios (e.g., EC2 instance termination, AZ outage, network latency injection, API throttling). Templates should include appropriate stop conditions to limit blast radius during experiments. Completed experiments should show a history of regular chaos engineering practice with `state.status` of `completed`, demonstrating that the organization actively validates its resilience posture. If no experiment templates exist, the organization has not adopted chaos engineering practices and may have untested assumptions about system resilience. See remediation-workflow.md for remediation steps.
 
-### Phase 6: Update CSV Tracking
+### Phase 5: Update CSV Tracking
 
 After completing the assessment, update the CSV file with findings:
 

@@ -213,17 +213,6 @@ Fully managed remote MCP server providing up-to-date AWS documentation, code sam
 ### aws-documentation
 Access to official AWS documentation for detailed implementation instructions.
 
-### well-architected-security
-AWS Well-Architected Security Assessment Tool MCP server. Provides operational tools for monitoring and assessing AWS environments against the AWS Well-Architected Framework Security Pillar, including:
-- `CheckSecurityServices` — Monitor operational status of GuardDuty, Security Hub, Inspector, and IAM Access Analyzer
-- `GetSecurityFindings` — Retrieve and analyze security findings from AWS services
-- `AnalyzeSecurityPosture` — Comprehensive security posture analysis against the Well-Architected Framework
-- `GetResourceComplianceStatus` — Monitor resource compliance against security standards
-- `ExploreAwsResources` — Discover and inventory AWS resources across services and regions
-- `GetStoredSecurityContext` — Access historical security context data for trend analysis
-
-### document-loader
-Loads and processes the security maturity CSV and markdown files.
 
 ## Assessment Execution Rules
 
@@ -266,11 +255,11 @@ When the user has multiple AWS accounts (AWS Organizations), follow the `multi-a
 1. Always start by asking the user which phase to assess — do not assume all phases should run
 2. For multi-account environments, ask which accounts are in scope before starting
 3. Execute one phase per conversation turn:
-   - Phase 1: Account Information
-   - Phase 2: Quick Wins Assessment (17 controls)
-   - Phase 3: Foundational Controls Assessment (19 controls)
-   - Phase 4: Efficient Controls Assessment (20 controls)
-   - Phase 5: Optimized Controls Assessment (19 controls)
+   - Phase 0: Account Information
+   - Phase 1: Quick Wins Assessment (17 controls)
+   - Phase 2: Foundational Controls Assessment (19 controls)
+   - Phase 3: Efficient Controls Assessment (20 controls)
+   - Phase 4: Optimized Controls Assessment (19 controls)
 4. After completing each phase, write the phase summary to the findings file, update the CSV, and ask the user if they want to proceed to the next phase
 5. Never read the entire assessment-workflow.md at once — only read the section for the current phase being assessed
 
@@ -467,15 +456,6 @@ If you want to use a different AWS profile or region, edit `mcp.json` and modify
     "AWS_PROFILE": "your-profile-name",
     "AWS_REGION": "your-region",
     "READ_OPERATIONS_ONLY": "true",
-    "FASTMCP_LOG_LEVEL": "ERROR"
-  }
-},
-"well-architected-security": {
-  "command": "uvx",
-  "args": ["--from", "awslabs.well-architected-security-mcp-server", "well-architected-security-mcp-server"],
-  "env": {
-    "AWS_PROFILE": "your-profile-name",
-    "AWS_REGION": "your-region",
     "FASTMCP_LOG_LEVEL": "ERROR"
   }
 }

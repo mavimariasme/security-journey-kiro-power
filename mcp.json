@@ -28,21 +28,6 @@
         "AWS_DOCUMENTATION_PARTITION": "aws",
         "FASTMCP_LOG_LEVEL": "ERROR"
       }
-    },
-    "well-architected-security": {
-      "command": "uvx",
-      "args": ["--from", "awslabs.well-architected-security-mcp-server", "well-architected-security-mcp-server"],
-      "env": {
-        "AWS_REGION": "us-east-1",
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
-    },
-    "document-loader": {
-      "command": "uvx",
-      "args": ["awslabs.document-loader-mcp-server@latest"],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
-      }
     }
   }
 }
