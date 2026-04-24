@@ -62,7 +62,7 @@ The power needs read-only access. See `POWER.md` for the full least-privilege IA
 
 ### Optional: Custom AWS Profile/Region
 
-Edit `mcp.json` and add `AWS_PROFILE` / change `AWS_REGION` in the `aws-api` and `well-architected-security` servers.
+Edit `mcp.json` and add `AWS_PROFILE` / change `AWS_REGION` in the `aws-api` server.
 
 ## Quick Start
 
@@ -182,8 +182,6 @@ Then start talking to the agent. Here are example prompts to get you going:
 | [awslabs.aws-api-mcp-server](https://github.com/awslabs/mcp) | AWS API access (read-only by default) | Apache-2.0 |
 | [AWS Knowledge MCP](https://knowledge-mcp.global.api.aws) | AWS best practices and documentation | AWS-managed |
 | [awslabs.aws-documentation-mcp-server](https://github.com/awslabs/mcp) | Official AWS documentation | Apache-2.0 |
-| [awslabs.well-architected-security-mcp-server](https://github.com/awslabs/mcp) | Well-Architected Security Pillar assessment | Apache-2.0 |
-| [awslabs.document-loader-mcp-server](https://github.com/awslabs/mcp) | CSV and markdown processing | Apache-2.0 |
 
 ## Troubleshooting
 
@@ -197,4 +195,4 @@ Then start talking to the agent. Here are example prompts to get you going:
 
 Apache License 2.0 — see [LICENSE](LICENSE).
 
-Based on the [AWS Security Maturity Model](https://maturitymodel.security.aws.dev). Integrates with MCP servers from [awslabs/mcp](https://github.com/awslabs/mcp) (Apache-2.0). Does not collect client-side telemetry.
+Based on the [AWS Security Maturity Model](https://maturitymodel.security.aws.dev). Integrates with MCP servers from [awslabs/mcp](https://github.com/awslabs/mcp) (Apache-2.0) and the [AWS Knowledge MCP Server](https://knowledge-mcp.global.api.aws). Does not collect client-side telemetry.

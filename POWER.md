@@ -1,9 +1,9 @@
 ---
 name: "security-journey-power"
 displayName: "Security Journey Power"
-description: "Assess and improve your AWS security posture using the AWS Security Maturity Model framework - automated assessment, remediation planning, and implementation guidance with progress tracking"
+description: "Assess and improve your AWS security posture using the AWS Security Maturity Model framework - automated assessment, remediation planning, and implementation guidance with multi-account support and progress tracking via CSV"
 keywords: ["aws", "security", "maturity", "assessment", "remediation", "compliance", "guardrails", "cloudtrail", "guardduty", "well-architected"]
-author: "mariasme@amazon.com"
+author: "AWS"
 ---
 
 # Security Journey Power
@@ -444,21 +444,29 @@ The power responds to natural language in any language. Here are example prompts
 
 ## MCP Config Placeholders
 
-The mcp.json is pre-configured and ready to use. The `aws-api` server is set to `READ_OPERATIONS_ONLY=true` by default for safety during assessments.
+The mcp.json uses environment variable references (`${VARIABLE_NAME}` format) so you can configure values through your shell environment. Set these variables before launching Kiro:
 
-If you want to use a different AWS profile or region, edit `mcp.json` and modify the `aws-api` and `well-architected-security` servers' `env` sections:
+| Variable | Used By | Default / Recommended | Description |
+|---|---|---|---|
+| `FASTMCP_LOG_LEVEL` | aws-core, aws-api, aws-documentation | `ERROR` | MCP server log verbosity |
+| `AWS_REGION` | aws-api | `us-east-1` | AWS region for API calls |
+| `READ_OPERATIONS_ONLY` | aws-api | `true` | Restrict to read-only API calls (recommended for assessments) |
+| `AWS_DOCUMENTATION_PARTITION` | aws-documentation | `aws` | AWS partition for documentation lookups |
 
-```json
-"aws-api": {
-  "command": "uvx",
-  "args": ["awslabs.aws-api-mcp-server@latest"],
-  "env": {
-    "AWS_PROFILE": "your-profile-name",
-    "AWS_REGION": "your-region",
-    "READ_OPERATIONS_ONLY": "true",
-    "FASTMCP_LOG_LEVEL": "ERROR"
-  }
-}
+**Example — set variables and launch:**
+
+```bash
+export FASTMCP_LOG_LEVEL="ERROR"
+export AWS_REGION="us-east-1"
+export READ_OPERATIONS_ONLY="true"
+export AWS_DOCUMENTATION_PARTITION="aws"
+```
+
+If you want to use a different AWS profile or region, update the corresponding environment variables or add `AWS_PROFILE` to your shell:
+
+```bash
+export AWS_PROFILE="your-profile-name"
+export AWS_REGION="your-region"
 ```
 
 After any changes, reconnect MCP servers in Kiro Powers panel.
@@ -471,8 +479,6 @@ This power integrates with the following MCP servers, all licensed under the Apa
 - [awslabs.core-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
 - [awslabs.aws-api-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
 - [awslabs.aws-documentation-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
-- [awslabs.well-architected-security-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
-- [awslabs.document-loader-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
 - [AWS Knowledge MCP Server](https://knowledge-mcp.global.api.aws) (AWS-managed remote service)
 
 This power does not collect any client-side telemetry.

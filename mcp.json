@@ -4,16 +4,16 @@
       "command": "uvx",
       "args": ["awslabs.core-mcp-server@latest"],
       "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR"
+        "FASTMCP_LOG_LEVEL": "${FASTMCP_LOG_LEVEL}"
       }
     },
     "aws-api": {
       "command": "uvx",
       "args": ["awslabs.aws-api-mcp-server@latest"],
       "env": {
-        "AWS_REGION": "us-east-1",
-        "READ_OPERATIONS_ONLY": "true",
-        "FASTMCP_LOG_LEVEL": "ERROR"
+        "AWS_REGION": "${AWS_REGION}",
+        "READ_OPERATIONS_ONLY": "${READ_OPERATIONS_ONLY}",
+        "FASTMCP_LOG_LEVEL": "${FASTMCP_LOG_LEVEL}"
       }
     },
     "aws-knowledge": {
@@ -25,8 +25,8 @@
       "command": "uvx",
       "args": ["awslabs.aws-documentation-mcp-server@latest"],
       "env": {
-        "AWS_DOCUMENTATION_PARTITION": "aws",
-        "FASTMCP_LOG_LEVEL": "ERROR"
+        "AWS_DOCUMENTATION_PARTITION": "${AWS_DOCUMENTATION_PARTITION}",
+        "FASTMCP_LOG_LEVEL": "${FASTMCP_LOG_LEVEL}"
       }
     }
   }
