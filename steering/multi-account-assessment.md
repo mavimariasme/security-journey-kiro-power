@@ -14,18 +14,36 @@ Many AWS environments use multiple accounts (via AWS Organizations) to separate 
 
 ### Step 1: Identify Your Account Structure
 
-```bash
-# Check if Organizations is enabled and get org details
-aws organizations describe-organization --query 'Organization.{Id:Id,MasterAccountId:MasterAccountId,MasterAccountEmail:MasterAccountEmail}' --output table
+Use `aws___run_script` to discover your organization structure:
 
-# List all accounts in the organization
-aws organizations list-accounts --query 'Accounts[].{Id:Id,Name:Name,Email:Email,Status:Status}' --output table
+```python
+import boto3
 
-# List organizational units (OUs)
-aws organizations list-roots --query 'Roots[].{Id:Id,Name:Name}' --output text | while read root_id root_name; do
-  echo "Root: $root_name ($root_id)"
-  aws organizations list-organizational-units-for-parent --parent-id $root_id --query 'OrganizationalUnits[].{Id:Id,Name:Name}' --output table
-done
+sts = boto3.client('sts')
+identity = sts.get_caller_identity()
+print(f"Current Account: {identity['Account']}")
+
+try:
+    org = boto3.client('organizations')
+    org_info = org.describe_organization()['Organization']
+    print(f"Organization ID: {org_info['Id']}")
+    print(f"Management Account: {org_info['MasterAccountId']}")
+
+    # List all accounts
+    accounts = org.list_accounts()['Accounts']
+    print(f"\nAccounts ({len(accounts)}):")
+    for acct in accounts:
+        print(f"  {acct['Id']} - {acct['Name']} ({acct['Status']})")
+
+    # List OUs
+    roots = org.list_roots()['Roots']
+    for root in roots:
+        print(f"\nRoot: {root['Name']} ({root['Id']})")
+        ous = org.list_organizational_units_for_parent(ParentId=root['Id'])['OrganizationalUnits']
+        for ou in ous:
+            print(f"  OU: {ou['Name']} ({ou['Id']})")
+except Exception as e:
+    print(f"Not in an Organization or no access: {e}")
 ```
 
 ### Step 2: Determine Assessment Scope
@@ -81,26 +99,43 @@ These controls must be checked in each individual account:
 
 ### Delegated Services (Assess from Admin Account)
 
-If delegated administration is configured, these can be assessed centrally:
+If delegated administration is configured, these can be assessed centrally. Use `aws___call_aws` or `aws___run_script`:
 
-```bash
-# Check delegated administrators
-aws organizations list-delegated-administrators --query 'DelegatedAdministrators[].{Id:Id,Name:Name,Email:Email,Services:DelegatedServices}' --output table 2>/dev/null || echo "Not running from management account or no delegated admins"
+```python
+import boto3
 
-# Common delegated services
-aws organizations list-delegated-services-for-account --account-id <admin-account-id> --query 'DelegatedServices[].ServicePrincipal' --output table 2>/dev/null
+org = boto3.client('organizations')
+
+try:
+    admins = org.list_delegated_administrators()['DelegatedAdministrators']
+    print("Delegated Administrators:")
+    for admin in admins:
+        print(f"  {admin['Id']} - {admin['Name']}")
+        services = org.list_delegated_services_for_account(AccountId=admin['Id'])['DelegatedServices']
+        for svc in services:
+            print(f"    Service: {svc['ServicePrincipal']}")
+except Exception as e:
+    print(f"Not running from management account or no delegated admins: {e}")
 ```
 
 ## Execution Workflow
 
 ### Step 1: Assess Organization-Level Controls First
 
-Start from the management account (or delegated admin):
+Start from the management account (or delegated admin). Use `aws___run_script`:
 
-```bash
-# Verify you're in the management account
-aws organizations describe-organization --query 'Organization.MasterAccountId' --output text
-aws sts get-caller-identity --query 'Account' --output text
+```python
+import boto3
+
+sts = boto3.client('sts')
+org = boto3.client('organizations')
+
+identity = sts.get_caller_identity()
+org_info = org.describe_organization()['Organization']
+
+print(f"Current Account: {identity['Account']}")
+print(f"Management Account: {org_info['MasterAccountId']}")
+print(f"Is Management: {identity['Account'] == org_info['MasterAccountId']}")
 ```
 
 Run organization-level checks: SCPs, org trail, delegated admins, Security Hub aggregation.
@@ -109,31 +144,32 @@ Save findings to `assessment-findings-org-{ORG_ID}.md`.
 
 ### Step 2: Assess Each Member Account
 
-For each account in scope:
+For each account in scope, use `aws___run_script` to assume the cross-account role and run checks:
 
 **Using cross-account role assumption:**
-```bash
-# Assume role in target account
-CREDS=$(aws sts assume-role \
-  --role-arn arn:aws:iam::{TARGET_ACCOUNT_ID}:role/{ROLE_NAME} \
-  --role-session-name security-assessment \
-  --query 'Credentials.[AccessKeyId,SecretAccessKey,SessionToken]' \
-  --output text)
+```python
+import boto3
 
-# Export temporary credentials
-export AWS_ACCESS_KEY_ID=$(echo $CREDS | awk '{print $1}')
-export AWS_SECRET_ACCESS_KEY=$(echo $CREDS | awk '{print $2}')
-export AWS_SESSION_TOKEN=$(echo $CREDS | awk '{print $3}')
+TARGET_ACCOUNT_ID = "123456789012"  # Replace with target account
+ROLE_NAME = "OrganizationAccountAccessRole"  # Or your custom role
 
-# Verify identity
-aws sts get-caller-identity
-```
+sts = boto3.client('sts')
+creds = sts.assume_role(
+    RoleArn=f"arn:aws:iam::{TARGET_ACCOUNT_ID}:role/{ROLE_NAME}",
+    RoleSessionName="security-assessment"
+)['Credentials']
 
-**Using named profiles:**
-```bash
-# Switch to target account profile
-export AWS_PROFILE=account-name-profile
-aws sts get-caller-identity
+# Create session with assumed role credentials
+session = boto3.Session(
+    aws_access_key_id=creds['AccessKeyId'],
+    aws_secret_access_key=creds['SecretAccessKey'],
+    aws_session_token=creds['SessionToken']
+)
+
+# Verify identity in target account
+target_sts = session.client('sts')
+identity = target_sts.get_caller_identity()
+print(f"Now operating as: {identity['Arn']} in account {identity['Account']}")
 ```
 
 Run the standard per-account assessment phases. Save findings to `assessment-findings-{ACCOUNT_ID}.md`.

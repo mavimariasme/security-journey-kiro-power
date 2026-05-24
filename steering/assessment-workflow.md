@@ -10,22 +10,40 @@ The assessment workflow helps you:
 3. Identify gaps and prioritize remediations
 4. Track progress in the CSV file
 
-## Well-Architected Security MCP Server
+## AWS MCP Server Tools for Assessment
 
-In addition to the manual CLI checks below, the power includes the Well-Architected Security MCP server which provides automated assessment tools:
+The power uses the official AWS MCP Server which provides these tools for security assessments:
 
-- **CheckSecurityServices** — Quickly check the operational status of GuardDuty, Security Hub, Inspector, and IAM Access Analyzer across regions. Use this as a fast first pass before running individual CLI checks.
-- **GetSecurityFindings** — Retrieve and filter security findings from Security Hub, GuardDuty, and Inspector by severity, resource type, or service. Replaces many of the manual `get-findings` CLI calls below.
-- **AnalyzeSecurityPosture** — Run a comprehensive security posture analysis against the Well-Architected Framework Security Pillar. Use this for an overall assessment summary.
-- **GetResourceComplianceStatus** — Check resource compliance against security standards. Useful for Phase 3 and Phase 4 controls.
-- **ExploreAwsResources** — Discover resources across AWS services and regions. Helpful for identifying resources that need security attention.
-- **GetStoredSecurityContext** — Retrieve historical security data for trend analysis and comparison with previous assessments.
+- **`aws___call_aws`** — Execute authenticated AWS API calls for individual security checks. Use for read-only operations like `DescribeTrails`, `ListDetectors`, `GetAccountSummary`, etc.
+- **`aws___run_script`** — Execute Python scripts in a sandboxed environment for multi-step checks. Use when you need to check multiple regions, iterate over resources, or perform complex logic with retry handling.
+- **`aws___search_documentation`** — Search AWS documentation and discover available skills. Use to find best practices and current guidance for specific controls.
+- **`aws___retrieve_skill`** — Load domain-specific skills for guided workflows. Load `aws-iam` for IAM checks, `setting-up-cloudtrail-multi-region` for CloudTrail, etc.
+- **`aws___suggest_aws_commands`** — Get API syntax help for unfamiliar services or newly released APIs.
+- **`aws___list_regions`** — Get all AWS regions for multi-region assessments.
 
-**Recommended approach:** Start each phase by running `CheckSecurityServices` and `AnalyzeSecurityPosture` to get a high-level view, then use the specific CLI checks below for detailed control-by-control assessment.
+**Recommended approach:** Start each phase by loading relevant skills with `aws___retrieve_skill`, then use `aws___call_aws` for individual checks and `aws___run_script` for multi-step or multi-region checks. Use `aws___search_documentation` when you need current best practices for a specific control.
+
+**Example — multi-region GuardDuty check using `aws___run_script`:**
+```python
+import boto3
+
+ec2 = boto3.client('ec2')
+regions = [r['RegionName'] for r in ec2.describe_regions()['Regions']]
+
+results = {}
+for region in regions:
+    gd = boto3.client('guardduty', region_name=region)
+    detectors = gd.list_detectors()['DetectorIds']
+    results[region] = 'ENABLED' if detectors else 'DISABLED'
+
+for region, status in sorted(results.items()):
+    print(f"{region}: {status}")
+```
 
 ## Prerequisites
 
-- AWS CLI configured with appropriate credentials
+- AWS MCP Server connected (via `mcp-proxy-for-aws`)
+- AWS credentials configured and valid (`aws sts get-caller-identity` must succeed)
 - Read access to AWS services (SecurityAudit policy recommended)
 - CSV tracking file (will be created if doesn't exist)
 - For multi-account assessments, see `multi-account-assessment.md`

@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Before running any AWS CLI commands or MCP tool calls, the agent MUST complete this pre-assessment checklist. This ensures credentials work, scope is clear, and the user understands what will happen.
+Before running any AWS API calls or MCP tool operations, the agent MUST complete this pre-assessment checklist. This ensures credentials work, scope is clear, and the user understands what will happen.
 
 ## Rules
 
 1. **Do NOT skip this checklist.** Every assessment session must start here, even if the user says "just run it".
-2. **Do NOT run AWS CLI commands until Step 1 (credential validation) passes.**
+2. **Do NOT run AWS API calls until Step 1 (credential validation) passes.**
 3. **Ask clarifying questions in a single grouped message** — do not ask one question at a time across multiple turns. Present all questions together and let the user answer.
 4. **If resuming a previous assessment**, still validate credentials (Step 1) but skip the scoping questions if answers are already in the existing findings file.
 
@@ -15,26 +15,46 @@ Before running any AWS CLI commands or MCP tool calls, the agent MUST complete t
 
 Run these checks silently before asking the user anything. If they fail, stop and help the user fix credentials before proceeding.
 
-```bash
+Use `aws___call_aws` for each check:
+
+```
 # Check 1: Can we call AWS at all?
-aws sts get-caller-identity
+Service: sts, Action: GetCallerIdentity
 
-# Check 2: What account are we in?
-aws sts get-caller-identity --query 'Account' --output text
+# Check 2: What region is configured?
+Service: ec2, Action: DescribeRegions (confirms API access)
 
-# Check 3: What region is configured?
-aws configure get region || echo "No default region set"
+# Check 3: Is this an Organizations management account?
+Service: organizations, Action: DescribeOrganization
+```
 
-# Check 4: Is this an Organizations management account?
-aws organizations describe-organization --query 'Organization.MasterAccountId' --output text 2>/dev/null || echo "NOT_ORG_OR_NO_ACCESS"
+Alternatively, use `aws___run_script` to run all checks at once:
+
+```python
+import boto3
+
+sts = boto3.client('sts')
+identity = sts.get_caller_identity()
+print(f"Account: {identity['Account']}")
+print(f"ARN: {identity['Arn']}")
+
+try:
+    org = boto3.client('organizations')
+    org_info = org.describe_organization()['Organization']
+    print(f"Organization: {org_info['Id']}")
+    print(f"Management Account: {org_info['MasterAccountId']}")
+    is_management = identity['Account'] == org_info['MasterAccountId']
+    print(f"Is Management Account: {is_management}")
+except Exception as e:
+    print(f"Not in an Organization or no access: {e}")
 ```
 
 **If credential check fails:**
 - Tell the user: "I couldn't authenticate with AWS. Let's fix that first."
 - Ask if they have AWS CLI installed (`aws --version`)
-- Ask if they have a profile configured (`aws configure list`)
-- Suggest: `export AWS_PROFILE=your-profile-name` if they have multiple profiles
-- Do NOT proceed until `sts get-caller-identity` succeeds
+- Suggest running `aws login` for the simplest credential setup
+- If they have multiple profiles, suggest: `export AWS_PROFILE=your-profile-name`
+- Do NOT proceed until `GetCallerIdentity` succeeds
 
 **If credential check succeeds:**
 - Note the account ID, IAM principal, and region

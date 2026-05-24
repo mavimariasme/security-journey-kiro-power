@@ -4,7 +4,7 @@ A Kiro Power for assessing and improving your AWS security posture using the [AW
 
 ## How It Works
 
-This power turns Kiro into a security assessment companion for your AWS accounts. You talk to the agent in natural language, and it runs read-only AWS CLI commands to check your security configuration against 73 controls organized into 4 maturity phases.
+This power turns Kiro into a security assessment companion for your AWS accounts. You talk to the agent in natural language, and it uses the official [AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/understanding-mcp-server-tools.html) to check your security configuration against 73 controls organized into 4 maturity phases.
 
 ```
 You: "Assess my AWS security posture"
@@ -14,12 +14,12 @@ Agent: validates credentials → asks scoping questions → runs checks → save
 The agent will:
 1. Verify your AWS credentials before doing anything
 2. Ask what you want to assess (which phases, which accounts, which regions)
-3. Run read-only checks against your AWS account
+3. Run read-only checks against your AWS account via the AWS MCP Server
 4. Save findings incrementally to a markdown file (nothing is lost if the conversation is interrupted)
 5. Update a CSV tracking file with pass/fail status for each control
 6. Recommend remediations prioritized by impact and effort
 
-The agent never modifies your AWS environment without asking first. Every write command is presented for your explicit approval.
+The agent never modifies your AWS environment without asking first. Every write operation is presented for your explicit approval.
 
 ## What It Covers
 
@@ -34,7 +34,7 @@ The agent never modifies your AWS environment without asking first. Every write 
 
 ## Prerequisites
 
-### 1. uvx (Python package runner)
+### 1. uv (Python package runner)
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -42,11 +42,12 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 uvx --version
 ```
 
-### 2. AWS CLI configured
+### 2. AWS CLI configured (v2.32.0+)
 
 ```bash
 aws --version
-aws sts get-caller-identity   # must succeed before using the power
+aws login                      # recommended — auto-rotates credentials
+aws sts get-caller-identity    # must succeed before using the power
 ```
 
 ### 3. IAM permissions
@@ -58,11 +59,40 @@ The power needs read-only access. See `POWER.md` for the full least-privilege IA
 1. Open Kiro Powers Panel (command palette → "Open Kiro Powers")
 2. Click "Add Custom Power" → "Local Directory"
 3. Enter the full path to this directory
-4. MCP servers connect automatically
+4. The AWS MCP Server connects automatically
 
-### Optional: Custom AWS Profile/Region
+### Changing the AWS Region
 
-Edit `mcp.json` and add `AWS_PROFILE` / change `AWS_REGION` in the `aws-api` server.
+The default region is `us-east-1`. If you need to operate in a different region, you have two options:
+
+**Option 1 — Set the `AWS_REGION` environment variable** (recommended):
+
+```bash
+export AWS_REGION=us-west-2
+```
+
+The `mcp.json` reads `AWS_REGION` from your environment via `${AWS_REGION:-us-east-1}`, so the proxy will pick it up automatically.
+
+**Option 2 — Edit `mcp.json` directly:**
+
+```json
+{
+  "mcpServers": {
+    "aws": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata", "AWS_REGION=us-west-2"
+      ]
+    }
+  }
+}
+```
+
+Note: The endpoint URL determines which AWS MCP Server you connect to (currently available in `us-east-1` and `eu-central-1`). The `AWS_REGION` metadata sets the default region for AWS operations the server performs on your behalf — these can be different. You can also override the region per query (e.g., "list my EC2 instances in eu-west-1").
+
+Reconnect MCP servers in the Kiro Powers panel after any config change.
 
 ## Quick Start
 
@@ -157,42 +187,58 @@ Then start talking to the agent. Here are example prompts to get you going:
 4. **CSV tracking** — Each control is marked as PASS/FAIL/PARTIAL in the tracking CSV
 5. **Phase summary** — After each phase, you get a summary and can decide whether to continue
 6. **Remediation planning** — Once gaps are identified, the agent creates a prioritized plan
-7. **Guided implementation** — Each fix is presented step-by-step with your approval required for every write command
+7. **Guided implementation** — Each fix is presented step-by-step with your approval required for every write operation
 
 ## Files
 
 | File | Description |
 |------|-------------|
 | `POWER.md` | Full power documentation and agent instructions |
-| `mcp.json` | MCP server configuration (pre-configured) |
+| `mcp.json` | MCP server configuration (AWS MCP Server via mcp-proxy-for-aws) |
 | `aws-security-maturity-tracking-template.csv` | CSV template with all 73 controls |
 | `steering/pre-assessment-checklist.md` | Pre-flight credential checks and scoping questions |
-| `steering/assessment-workflow.md` | Step-by-step assessment CLI checks |
+| `steering/assessment-workflow.md` | Step-by-step assessment checks |
 | `steering/remediation-workflow.md` | Remediation implementation guide |
 | `steering/implementation-guide.md` | Detailed implementation guide for all controls |
 | `steering/csv-management.md` | CSV tracking file management |
 | `steering/findings-persistence.md` | Incremental findings persistence protocol |
 | `steering/multi-account-assessment.md` | Multi-account organization assessment guide |
 
-## MCP Servers
+## AWS MCP Server
 
-| Server | Purpose | License |
-|--------|---------|---------|
-| [awslabs.core-mcp-server](https://github.com/awslabs/mcp) | Core AWS operations | Apache-2.0 |
-| [awslabs.aws-api-mcp-server](https://github.com/awslabs/mcp) | AWS API access (read-only by default) | Apache-2.0 |
-| [AWS Knowledge MCP](https://knowledge-mcp.global.api.aws) | AWS best practices and documentation | AWS-managed |
-| [awslabs.aws-documentation-mcp-server](https://github.com/awslabs/mcp) | Official AWS documentation | Apache-2.0 |
+This power uses the official [AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/understanding-mcp-server-tools.html) — a single managed endpoint that replaces the previous individual AWS Labs MCP servers.
+
+| Tool | Purpose |
+|------|---------|
+| `aws___call_aws` | Execute authenticated AWS API calls (300+ services) |
+| `aws___run_script` | Run Python scripts in sandboxed environment |
+| `aws___search_documentation` | Search AWS docs, API references, and skills |
+| `aws___retrieve_skill` | Load domain-specific skills for guided workflows |
+| `aws___suggest_aws_commands` | Get API syntax help |
+| `aws___list_regions` | List all AWS regions |
+| `aws___get_regional_availability` | Check service availability by region |
+| `aws___read_documentation` | Retrieve specific AWS doc pages |
+| `aws___get_presigned_url` | Generate S3 pre-signed URLs |
+| `aws___get_tasks` | Poll long-running task status |
+
+The server provides enterprise controls including CloudWatch metrics, IAM condition keys for agent-specific policies, and CloudTrail audit logging.
 
 ## Troubleshooting
 
-- **MCP servers won't connect**: Run `uvx --version` to verify installation, check the Powers panel, restart Kiro
-- **AWS CLI errors**: Run `aws sts get-caller-identity` — if this fails, the power can't work
+- **MCP server won't connect**: Run `uvx --version` to verify installation, check the Powers panel, restart Kiro
+- **AWS authentication errors**: Run `aws login` to refresh credentials, or `aws sts get-caller-identity` to verify
 - **Permission denied on specific checks**: Your IAM policy may be missing permissions — see the full policy in `POWER.md`
 - **CSV issues**: Verify the file exists and has read/write permissions
 - **Assessment interrupted**: Just ask the agent to resume — it reads the existing findings file and picks up where it left off
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE).
+This power is licensed under the Apache License 2.0 — see [LICENSE](LICENSE).
 
-Based on the [AWS Security Maturity Model](https://maturitymodel.security.aws.dev). Integrates with MCP servers from [awslabs/mcp](https://github.com/awslabs/mcp) (Apache-2.0) and the [AWS Knowledge MCP Server](https://knowledge-mcp.global.api.aws). Does not collect client-side telemetry.
+Components used by this power:
+
+- **[MCP Proxy for AWS](https://github.com/aws/mcp-proxy-for-aws)** (`mcp-proxy-for-aws`) — Apache License 2.0. Client-side proxy that handles SigV4 authentication between Kiro and the AWS MCP Server.
+- **[AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/mcp-server.html)** — AWS-managed service. Use is governed by the [AWS Service Terms](https://aws.amazon.com/service-terms/) and standard AWS pricing applies for the underlying API calls executed on your behalf.
+- **[Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws)** — Apache License 2.0. Source of the skills (`aws-iam`, `creating-secrets-using-best-practices`, `setting-up-cloudtrail-multi-region`, etc.) loaded on demand via `aws___retrieve_skill`.
+
+Based on the [AWS Security Maturity Model](https://maturitymodel.security.aws.dev). Does not collect client-side telemetry.

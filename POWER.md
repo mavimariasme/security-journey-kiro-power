@@ -12,15 +12,15 @@ author: "AWS"
 
 **CRITICAL: This power operates in READ-ONLY mode by default. The agent MUST follow these rules at all times:**
 
-1. The agent MAY autonomously execute AWS CLI commands that only READ data (describe, list, get, lookup, generate-credential-report).
-2. The agent MUST NEVER autonomously execute any AWS CLI command that creates, modifies, deletes, enables, disables, attaches, detaches, revokes, or authorizes AWS resources or configurations.
+1. The agent MAY autonomously execute read-only AWS operations (describe, list, get, lookup, generate-credential-report) via the AWS MCP Server tools.
+2. The agent MUST NEVER autonomously execute any AWS operation that creates, modifies, deletes, enables, disables, attaches, detaches, revokes, or authorizes AWS resources or configurations.
 3. When a remediation step requires a write/modify/delete action, the agent MUST:
-   - Clearly present the exact command(s) to the user
-   - Explain what the command will do and what resources it will affect
+   - Clearly present the exact command(s) or API call(s) to the user
+   - Explain what the operation will do and what resources it will affect
    - Explicitly ask the user for approval before executing
-   - Only execute the command after receiving explicit user confirmation
-4. This applies to ALL write operations including but not limited to: `create-*`, `delete-*`, `put-*`, `modify-*`, `update-*`, `enable-*`, `disable-*`, `attach-*`, `detach-*`, `revoke-*`, `authorize-*`, `start-logging`, `stop-logging`.
-5. The agent MUST NOT batch multiple write commands together. Each write action requires separate user approval.
+   - Only execute the operation after receiving explicit user confirmation
+4. This applies to ALL write operations including but not limited to: `Create*`, `Delete*`, `Put*`, `Modify*`, `Update*`, `Enable*`, `Disable*`, `Attach*`, `Detach*`, `Revoke*`, `Authorize*`, `StartLogging`, `StopLogging`.
+5. The agent MUST NOT batch multiple write operations together. Each write action requires separate user approval.
 6. If the user asks the agent to "fix everything" or "remediate all", the agent MUST still present each write action individually for approval.
 
 ## Overview
@@ -30,19 +30,20 @@ This power turns Kiro into a security assessment companion for your AWS accounts
 **What happens when you start an assessment:**
 
 1. The agent validates your AWS credentials and asks scoping questions
-2. It runs read-only checks against your AWS account, one phase at a time
+2. It runs read-only checks against your AWS account using the AWS MCP Server, one phase at a time
 3. Findings are saved incrementally to a markdown file (nothing is lost if the conversation is interrupted)
 4. A CSV tracking file is updated with pass/fail status for each control
 5. After each phase, you get a summary and decide whether to continue
 6. When gaps are found, the agent creates a prioritized remediation plan
-7. For each fix, the agent presents the exact command and waits for your approval before executing
+7. For each fix, the agent presents the exact operation and waits for your approval before executing
 
 **Key capabilities:**
 
-- Automated Assessment: Uses AWS CLI and APIs to retrieve current security configurations (read-only, runs automatically)
+- Automated Assessment: Uses the AWS MCP Server to retrieve current security configurations (read-only, runs automatically)
+- Skills-Driven Guidance: Leverages curated AWS Agent Toolkit skills for IAM, secrets management, CloudTrail, and operations
 - Progress Tracking: Maintains a CSV file tracking your security maturity across all domains
 - Remediation Planning: Analyzes gaps and creates prioritized remediation plans
-- Implementation Guidance: Provides step-by-step AWS CLI commands and console instructions (requires user approval before execution)
+- Implementation Guidance: Provides step-by-step instructions using AWS MCP Server tools (requires user approval before execution)
 - Multi-Account Support: Assess multiple AWS accounts in an organization with consolidated reporting
 - Continuous Improvement: Updates tracking as you implement remediations
 
@@ -57,9 +58,9 @@ The AWS Security Maturity Model organizes security controls into 4 phases (Quick
 
 ## Prerequisites
 
-### 1. Install uvx (Python package runner)
+### 1. Install uv (Python package runner)
 
-All MCP servers in this power are distributed via [uvx](https://docs.astral.sh/uv/). Install it before using the power:
+The AWS MCP Server proxy is distributed via [uvx](https://docs.astral.sh/uv/). Install it before using the power:
 
 ```bash
 # macOS/Linux
@@ -75,9 +76,17 @@ uvx --version
 ### 2. AWS CLI Installed and Configured
 
 ```bash
-aws --version
-aws configure list
+aws --version          # Requires version 2.32.0 or later
+aws sts get-caller-identity
 ```
+
+**Recommended authentication method:**
+
+```bash
+aws login
+```
+
+This automatically rotates your credentials every 15 minutes, keeping your session valid for up to 12 hours. For other credential methods (SSO, IAM access keys, cross-account roles), see [Sign in with the AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sign-in.html).
 
 ### 3. AWS IAM Permissions (Least Privilege)
 
@@ -171,7 +180,7 @@ aws iam attach-user-policy \
 
 ### 4. AWS Profile Configuration (Optional)
 
-If using multiple AWS accounts:
+If using multiple AWS accounts or a non-default region:
 
 ```bash
 export AWS_PROFILE=your-profile-name
@@ -197,32 +206,59 @@ The power includes a CSV template (`aws-security-maturity-tracking-template.csv`
 - **findings-persistence.md** - How the agent saves findings incrementally to avoid context loss
 - **multi-account-assessment.md** - Guide for assessing multiple AWS accounts in an organization
 
-## Available MCP Servers
+## AWS MCP Server
 
-This power uses multiple MCP servers to provide comprehensive AWS security assessment capabilities:
+This power uses the official [AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/understanding-mcp-server-tools.html) — a managed remote server that provides full AWS API coverage, documentation search, skills retrieval, and sandboxed script execution through a single authenticated endpoint.
 
-### aws-core
-Core AWS operations and utilities for account information retrieval.
+The AWS MCP Server is the successor to the individual AWS Labs MCP servers (aws-api, aws-knowledge, aws-documentation, core). It offers:
 
-### aws-api
-Direct AWS API access for retrieving security configurations and settings. Configured with `READ_OPERATIONS_ONLY=true` by default for safety — remediation commands that require write access will be presented to the user for manual execution or the user can reconfigure this setting.
+- **Full AWS API coverage** — Interact with any of the 300+ AWS services through a single authenticated endpoint
+- **Sandboxed script execution** — Run Python scripts in an isolated environment for complex multi-step operations
+- **Real-time documentation access** — Search and retrieve current AWS documentation, API references, and service capabilities
+- **Skills retrieval** — Load curated AWS Agent Toolkit skills on demand for domain-specific guidance
+- **Enterprise controls** — CloudWatch metrics, IAM condition keys for agent-specific policies, and CloudTrail audit logging
 
-### aws-knowledge
-Fully managed remote MCP server providing up-to-date AWS documentation, code samples, regional availability information, and best practices. No authentication required. Accessed via `https://knowledge-mcp.global.api.aws`.
+### Available Tools
 
-### aws-documentation
-Access to official AWS documentation for detailed implementation instructions.
+| Tool | Purpose | Use In This Power |
+|------|---------|-------------------|
+| `aws___call_aws` | Execute authenticated AWS API calls | Primary tool for all security checks (read-only) and remediations (with user approval) |
+| `aws___run_script` | Execute Python scripts in sandboxed environment | Multi-step checks, parallel API calls, cross-service assessments, retry logic |
+| `aws___search_documentation` | Search AWS docs, API references, and skills | Find best practices, discover available skills, get implementation guidance |
+| `aws___retrieve_skill` | Load domain-specific AWS skills | Load IAM, secrets, CloudTrail, and operations skills for guided workflows |
+| `aws___suggest_aws_commands` | Get API syntax help | Discover correct API parameters for unfamiliar services |
+| `aws___list_regions` | List all AWS regions | Determine which regions to assess |
+| `aws___get_regional_availability` | Check service availability by region | Verify services are available before checking them |
+| `aws___read_documentation` | Retrieve specific AWS doc pages | Get detailed implementation instructions |
+| `aws___recommend` | Get content recommendations | Find related documentation and best practices |
+| `aws___get_presigned_url` | Generate S3 pre-signed URLs | Upload/download files for remediation workflows |
+| `aws___get_tasks` | Poll long-running task status | Monitor async operations started by call_aws or run_script |
 
+### Relevant Agent Toolkit Skills
+
+The AWS MCP Server provides access to curated skills from the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws). The agent should retrieve these skills when working on related controls:
+
+| Skill | When to Use |
+|-------|-------------|
+| `aws-iam` | When assessing or remediating IAM controls — contains verified edge cases for policy evaluation, trust policies, STS session limits, Organizations quirks, and MFA specifics |
+| `creating-secrets-using-best-practices` | When remediating secrets management controls — provides production-grade procedures for KMS encryption, rotation, least-privilege policies, and CloudTrail auditing |
+| `setting-up-cloudtrail-multi-region` | When remediating CloudTrail controls — provides step-by-step procedure for multi-region trail with S3 storage, CloudWatch Logs integration, and log analysis |
+| `setting-up-cloudwatch-alarm-notifications` | When remediating billing alarms or monitoring controls — provides CloudWatch alarm setup with SNS notifications |
+| `troubleshooting-application-failures` | When investigating security incidents or operational issues — provides systematic troubleshooting procedures |
+
+**How to use skills:** Call `aws___retrieve_skill` with the skill name to load the full skill content before performing related assessment or remediation tasks. Skills provide workflows, best practices, and step-by-step procedures that the agent should follow exactly.
+
+**How to discover skills:** Call `aws___search_documentation` with `topic: "skills"` to search for available skills related to a specific domain.
 
 ## Assessment Execution Rules
 
 **CRITICAL: The assessment workflow MUST be executed one phase at a time, never all at once.**
 
-The `assessment-workflow.md` file contains CLI checks for all 73 controls across 5 phases. Attempting to run the entire assessment in a single pass will exceed context limits and produce unreliable results.
+The `assessment-workflow.md` file contains checks for all 73 controls across 5 phases. Attempting to run the entire assessment in a single pass will exceed context limits and produce unreliable results.
 
 ### Pre-Assessment Checklist (Mandatory)
 
-**Before running ANY assessment commands, the agent MUST complete the `pre-assessment-checklist.md` workflow:**
+**Before running ANY assessment operations, the agent MUST complete the `pre-assessment-checklist.md` workflow:**
 
 1. Validate AWS credentials automatically (do not proceed if auth fails)
 2. Ask the user scoping questions (assessment scope, account scope, region scope) in a single grouped message
@@ -263,11 +299,33 @@ When the user has multiple AWS accounts (AWS Organizations), follow the `multi-a
 4. After completing each phase, write the phase summary to the findings file, update the CSV, and ask the user if they want to proceed to the next phase
 5. Never read the entire assessment-workflow.md at once — only read the section for the current phase being assessed
 
+### Using the AWS MCP Server for Assessments
+
+**Preferred approach for each phase:**
+
+1. **Start with `aws___retrieve_skill`** — Load relevant skills (e.g., `aws-iam` for IAM controls, `setting-up-cloudtrail-multi-region` for CloudTrail checks)
+2. **Use `aws___call_aws` for individual API checks** — Execute read-only AWS API calls to check each control
+3. **Use `aws___run_script` for multi-step checks** — When a control requires multiple API calls, parallel execution, or complex logic (e.g., checking all regions, iterating over resources)
+4. **Use `aws___search_documentation` for context** — When you need current best practices or implementation details for a specific control
+
+**Example — checking GuardDuty across all regions:**
+```
+Tool: aws___run_script
+Script: Check GuardDuty detector status in all active regions, return a summary of which regions have it enabled vs disabled
+```
+
+**Example — checking IAM credential report:**
+```
+Tool: aws___call_aws
+Service: iam
+Action: GetCredentialReport
+```
+
 ### Phase Boundaries
 
 When the user asks for a "full assessment" or "complete assessment":
 - Explain that the assessment covers 73 controls across 5 phases
-- Recommend starting with Phase 2 (Quick Wins) as it provides the highest security impact with lowest effort
+- Recommend starting with Phase 1 (Quick Wins) as it provides the highest security impact with lowest effort
 - Execute each phase sequentially, pausing between phases for user review
 - Track completed phases in the CSV so the assessment can be resumed later
 
@@ -275,12 +333,13 @@ When the user asks for a "full assessment" or "complete assessment":
 
 For each phase:
 1. Read only the relevant phase section from `assessment-workflow.md`
-2. Execute CLI checks for each control in that phase
-3. After each control (or group of 2-3 controls), append results to the findings markdown file immediately
-4. After all controls in the phase are checked, write a phase summary to the findings file
-5. Update the CSV tracking file with findings
-6. Present the phase summary to the user
-7. Ask the user: "Phase X complete. Would you like to proceed to Phase Y?"
+2. Load relevant skills using `aws___retrieve_skill` for the controls in that phase
+3. Execute checks for each control using `aws___call_aws` or `aws___run_script`
+4. After each control (or group of 2-3 controls), append results to the findings markdown file immediately
+5. After all controls in the phase are checked, write a phase summary to the findings file
+6. Update the CSV tracking file with findings
+7. Present the phase summary to the user
+8. Ask the user: "Phase X complete. Would you like to proceed to Phase Y?"
 
 
 ## Common Workflows
@@ -289,9 +348,9 @@ For each phase:
 
 **Goal**: Assess your current AWS security posture across all domains
 
-1. Ask the agent: "Retrieve my AWS account information including account ID, regions in use, and basic configuration"
-2. Ask the agent: "Assess my AWS security controls for Phase 2 Quick Wins"
-3. The agent will check MFA status, GuardDuty, CloudTrail, S3 Block Public Access, Security Hub, security groups, WAF, and more — saving findings incrementally to `assessment-findings-{ACCOUNT_ID}.md`
+1. Ask the agent: "Assess my AWS security posture using the Security Maturity Model"
+2. The agent validates credentials, asks scoping questions, and begins Phase 1
+3. The agent uses `aws___call_aws` and `aws___run_script` to check each control, saving findings incrementally to `assessment-findings-{ACCOUNT_ID}.md`
 4. Review the findings file and ask the agent to continue with the next phase
 
 ### Workflow 2: Multi-Account Assessment
@@ -317,12 +376,12 @@ For each phase:
 **Goal**: Implement a specific security control with guidance
 
 1. Ask the agent: "I want to implement GuardDuty. Guide me through it."
-2. The agent will present each AWS CLI command and ask for your approval before executing
-3. Follow the step-by-step guidance, approving each action
+2. The agent retrieves the relevant skill using `aws___retrieve_skill` and presents each step
+3. For each write operation, the agent presents the exact API call and waits for your approval
 4. Ask the agent: "Verify that GuardDuty is properly configured"
 5. Ask the agent: "Update the CSV to mark GuardDuty as completed"
 
-> Note: The agent will never execute write/modify/delete AWS commands without your explicit approval. Each action is presented individually for review.
+> Note: The agent will never execute write/modify/delete AWS operations without your explicit approval. Each action is presented individually for review.
 
 ### Workflow 5: Continuous Monitoring
 
@@ -345,7 +404,7 @@ The power responds to natural language in any language. Here are example prompts
 
 **Resume or continue:**
 - "Resume my security assessment from where I left off"
-- "Continue with Phase 3 Foundational controls"
+- "Continue with Phase 2 Foundational controls"
 - "What phases have I already completed?"
 
 **Remediation:**
@@ -370,7 +429,7 @@ The power responds to natural language in any language. Here are example prompts
 
 **Retomar ou continuar:**
 - "Continue minha avaliação de segurança de onde parei"
-- "Continue com a Fase 3 controles Foundational"
+- "Continue com a Fase 2 controles Foundational"
 - "Quais fases eu já completei?"
 
 **Remediação:**
@@ -395,7 +454,7 @@ The power responds to natural language in any language. Here are example prompts
 
 **Reanudar o continuar:**
 - "Continúa mi evaluación de seguridad desde donde la dejé"
-- "Continúa con la Fase 3 controles Foundational"
+- "Continúa con la Fase 2 controles Foundational"
 - "¿Qué fases ya he completado?"
 
 **Remediación:**
@@ -414,16 +473,20 @@ The power responds to natural language in any language. Here are example prompts
 
 ### MCP Server Connection Issues
 
-1. Verify uvx is installed: `uvx --version`
-2. Check MCP server status in Kiro Powers panel
-3. Restart Kiro and reconnect MCP servers
-4. Check environment variables are set correctly
+1. Verify uv/uvx is installed: `uvx --version`
+2. Verify AWS credentials: `aws sts get-caller-identity`
+3. Check MCP server status in Kiro Powers panel
+4. Restart Kiro and reconnect MCP servers
+5. If using a non-default region, set `AWS_REGION` environment variable
 
-### AWS CLI Authentication Issues
+### Common Authentication Errors
 
-1. Verify AWS CLI configuration: `aws configure list` and `aws sts get-caller-identity`
-2. Check AWS profile: `export AWS_PROFILE=your-profile-name`
-3. Verify IAM permissions match the least-privilege policy above
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `ExpiredTokenException` | Session token expired | Run `aws login` again or refresh SSO with `aws sso login` |
+| `UnrecognizedClientException` | Invalid credentials | Run `aws sts get-caller-identity` to verify, reconfigure if needed |
+| `InvalidSignatureException` | Clock skew or wrong region | Check system clock, verify region configuration |
+| No credentials found | AWS not configured | Run `aws login` or `aws configure sso` |
 
 ### CSV File Issues
 
@@ -441,31 +504,42 @@ The power responds to natural language in any language. Here are example prompts
 - Incremental Implementation: Follow the phased approach, don't try everything at once
 - Verify After Implementation: Always verify controls are working as expected
 - Consider Compliance: Map controls to your compliance requirements (SOC 2, ISO 27001, etc.)
+- Use Skills: When remediating, ask the agent to retrieve the relevant AWS skill for step-by-step guidance
 
-## MCP Config Placeholders
+## MCP Config
 
-The mcp.json uses environment variable references (`${VARIABLE_NAME}` format) so you can configure values through your shell environment. Set these variables before launching Kiro:
+The `mcp.json` configures the official AWS MCP Server via the [MCP Proxy for AWS](https://github.com/aws/mcp-proxy-for-aws). The proxy translates MCP requests into AWS requests authenticated with SigV4.
 
-| Variable | Used By | Default / Recommended | Description |
-|---|---|---|---|
-| `FASTMCP_LOG_LEVEL` | aws-core, aws-api, aws-documentation | `ERROR` | MCP server log verbosity |
-| `AWS_REGION` | aws-api | `us-east-1` | AWS region for API calls |
-| `READ_OPERATIONS_ONLY` | aws-api | `true` | Restrict to read-only API calls (recommended for assessments) |
-| `AWS_DOCUMENTATION_PARTITION` | aws-documentation | `aws` | AWS partition for documentation lookups |
+**Configuration:**
 
-**Example — set variables and launch:**
-
-```bash
-export FASTMCP_LOG_LEVEL="ERROR"
-export AWS_REGION="us-east-1"
-export READ_OPERATIONS_ONLY="true"
-export AWS_DOCUMENTATION_PARTITION="aws"
+```json
+{
+  "mcpServers": {
+    "aws": {
+      "command": "uvx",
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata", "AWS_REGION=${AWS_REGION:-us-east-1}"
+      ]
+    }
+  }
+}
 ```
 
-If you want to use a different AWS profile or region, update the corresponding environment variables or add `AWS_PROFILE` to your shell:
+**Region behavior:**
+- The endpoint URL (`us-east-1`) determines which MCP server you connect to
+- The `AWS_REGION` metadata parameter sets the default region for AWS operations
+- These can be different — connect to `us-east-1` endpoint while operating on resources in another region
+- You can override the region in queries (e.g., "list my EC2 instances in eu-west-1")
+
+**Available endpoints:**
+- US East (N. Virginia): `https://aws-mcp.us-east-1.api.aws/mcp`
+- Europe (Frankfurt): `https://aws-mcp.eu-central-1.api.aws/mcp`
+
+**To change your default region:**
 
 ```bash
-export AWS_PROFILE="your-profile-name"
 export AWS_REGION="your-region"
 ```
 
@@ -475,10 +549,6 @@ After any changes, reconnect MCP servers in Kiro Powers panel.
 
 **Framework**: [AWS Security Maturity Model](https://maturitymodel.security.aws.dev)
 
-This power integrates with the following MCP servers, all licensed under the Apache-2.0 license:
-- [awslabs.core-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
-- [awslabs.aws-api-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
-- [awslabs.aws-documentation-mcp-server](https://github.com/awslabs/mcp) (Apache-2.0)
-- [AWS Knowledge MCP Server](https://knowledge-mcp.global.api.aws) (AWS-managed remote service)
+This power uses the official [AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/understanding-mcp-server-tools.html) (AWS-managed service, governed by the [AWS Service Terms](https://aws.amazon.com/service-terms/)) via the [MCP Proxy for AWS](https://github.com/aws/mcp-proxy-for-aws) (Apache-2.0). Skills are sourced from the [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws) (Apache-2.0).
 
 This power does not collect any client-side telemetry.

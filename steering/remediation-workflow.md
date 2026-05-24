@@ -23,16 +23,28 @@ The remediation workflow helps you:
 4. Update tracking CSV
 5. Monitor for regressions
 
-## Well-Architected Security Tools for Remediation
+## AWS MCP Server Tools for Remediation
 
-Before starting remediation, use the Well-Architected Security MCP server tools to get context:
+Before starting remediation, use the AWS MCP Server tools to get context:
 
-- **AnalyzeSecurityPosture** — Get a prioritized list of security improvements with recommendations aligned to the Well-Architected Framework
-- **GetSecurityFindings** — Review current findings by severity to validate which controls need attention
-- **GetResourceComplianceStatus** — Check which resources are non-compliant to scope remediation effort
-- **CheckSecurityServices** — Verify which security services are already enabled before attempting to enable them
+- **`aws___retrieve_skill`** — Load relevant skills for the control being remediated. For example, load `aws-iam` for IAM remediations, `creating-secrets-using-best-practices` for secrets management, or `setting-up-cloudtrail-multi-region` for CloudTrail setup. Skills provide step-by-step procedures that should be followed exactly.
+- **`aws___search_documentation`** — Search for current best practices and implementation guidance for the specific control
+- **`aws___call_aws`** — Execute individual AWS API calls for remediation steps (requires user approval for write operations)
+- **`aws___run_script`** — Execute multi-step remediation scripts in a sandboxed environment (requires user approval for write operations)
+- **`aws___suggest_aws_commands`** — Get API syntax help when implementing unfamiliar services
 
-After implementing a remediation, use **CheckSecurityServices** and **GetSecurityFindings** to verify the fix took effect.
+**Skill-driven remediation workflow:**
+1. Load the relevant skill with `aws___retrieve_skill` (e.g., `setting-up-cloudtrail-multi-region`)
+2. Follow the skill's step-by-step procedure exactly
+3. Present each write operation to the user for approval before executing
+4. After implementing, verify the fix using read-only API calls
+5. Search documentation with `aws___search_documentation` if you need additional context
+
+**Key skills for remediation:**
+- `aws-iam` — IAM policy evaluation edge cases, trust policy gotchas, privilege escalation patterns
+- `creating-secrets-using-best-practices` — KMS encryption, rotation, least-privilege policies for secrets
+- `setting-up-cloudtrail-multi-region` — Multi-region trail with S3, CloudWatch Logs, and analysis
+- `setting-up-cloudwatch-alarm-notifications` — CloudWatch alarms with SNS notifications
 
 ## Prioritization Framework
 

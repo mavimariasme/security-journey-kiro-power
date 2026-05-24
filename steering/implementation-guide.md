@@ -813,8 +813,8 @@ Use these questions to evaluate your current maturity:
 - [AWS Cloud Adoption Framework - Security Perspective](https://docs.aws.amazon.com/whitepapers/latest/overview-aws-cloud-adoption-framework/security-perspective.html)
 - [AWS Security Hub](https://aws.amazon.com/security-hub/)
 - [AWS Security Blog](https://aws.amazon.com/blogs/security/)
-- [AWS Well-Architected Security MCP Server](https://awslabs.github.io/mcp/servers/well-architected-security-mcp-server) — Automated security posture assessment tools
-- [AWS Knowledge MCP Server](https://awslabs.github.io/mcp/servers/aws-knowledge-mcp-server) — Up-to-date AWS documentation and best practices
+- [AWS MCP Server](https://docs.aws.amazon.com/agent-toolkit/latest/userguide/understanding-mcp-server-tools.html) — Official AWS MCP Server with full API coverage, documentation search, and skills
+- [Agent Toolkit for AWS](https://github.com/aws/agent-toolkit-for-aws) — Skills, plugins, and rules for AI coding agents working with AWS
 
 ---
 
